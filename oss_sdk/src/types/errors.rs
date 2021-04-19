@@ -1,19 +1,14 @@
-use oss_sdk::HttpError;
-use quick_xml::Error as QxmlError;
-use rusoto_core::region::ParseRegionError;
-use std::{error::Error as StdError, str::ParseBoolError};
-use std::{io::Error as IoError, str::Utf8Error, string::FromUtf8Error};
 
 #[derive(Debug, Display)]
 pub enum Error {
     Object(ObjectError),
-    Io(IoError),
-    String(FromUtf8Error),
-    Str(Utf8Error),
-    HttpError(HttpError),
-    ParseRegion(ParseRegionError),
-    Qxml(QxmlError),
-    ParseBool(ParseBoolError),
+    // Io(IoError),
+    // String(FromUtf8Error),
+    // Str(Utf8Error),
+    // HttpError(HttpError),
+    // ParseRegion(ParseRegionError),
+    // Qxml(QxmlError),
+    // ParseBool(ParseBoolError),
 }
 
 impl From<QxmlError> for Error {

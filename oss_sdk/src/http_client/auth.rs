@@ -101,7 +101,6 @@ impl<'a> SignedRequest<'a> {
         let sign_str_base64 = encode(hasher.result().code());
 
         let authorization = format!("OSS {}:{}", &self.access_key_id, sign_str_base64);
-        debug!("authorization: {}", authorization);
         ("Authorization", authorization)
     }
 }

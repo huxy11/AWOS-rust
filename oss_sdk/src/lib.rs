@@ -1,23 +1,20 @@
 #[macro_use]
-extern crate log;
-
-#[macro_use]
 extern crate derive_more;
 
 mod http_client;
 mod oss;
-mod regions;
-mod schema;
+mod types;
+
+pub use types::*;
 
 pub use oss::OSS_PREFIX;
 
 pub use crate::http_client::{HttpError, HttpResponse, SignAndDispatch};
 pub use crate::oss::OSSClient;
-pub use crate::regions::Region;
 
-pub type DefaultOssclient = OSSClient<reqwest::blocking::Client>;
+pub type OssClient = OSSClient<reqwest::blocking::Client>;
 
-impl DefaultOssclient {
+impl OssClient {
     pub fn new_oss_cli<'a, R, S, B, S1, S2>(
         region: R,
         schema: S,

@@ -49,27 +49,8 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
                         b"NextContinuationToken" => {
                             result.next_marker = reader.read_text(e.name(), &mut Vec::new())?
                         }
-                        b"CommonPrefixes" => {
-                            let mut buf = Vec::new();
-                            loop {
-                                match reader.read_event(&mut buf) {
-                                    Ok(Event::Start(ref e)) => match e.name() {
-                                        b"PreFix" => result
-                                            .prefixes
-                                            .push(reader.read_text(e.name(), &mut Vec::new())?),
-                                        _ => {}
-                                    },
-                                    Ok(Event::End(ref e)) => match e.name() {
-                                        b"CommonPrefixes" => break,
-                                        _ => {}
-                                    },
-                                    _ => panic!(
-                                        "Error at position {}: {:?}",
-                                        reader.buffer_position(),
-                                        e
-                                    ),
-                                }
-                            }
+                        b"Prefixes" => {
+                            result.prefixe = reader.read_text(e.name(),&mut Vec::new())?
                         }
                         _ => (),
                     },
@@ -110,11 +91,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
         if resp.status.is_success() {
             let mut get_resp: GetAsBufferResp = resp.into();
             if let Some(_meta_keys_filter) = meta_keys_filter.into() {
-                get_resp.meta = get_resp
-                    .meta
-                    .into_iter()
-                    .filter(|(k, _)| _meta_keys_filter.contains(k.as_str()))
-                    .collect();
+                get_resp.filter(_meta_keys_filter);
             }
             Ok(get_resp)
         } else {

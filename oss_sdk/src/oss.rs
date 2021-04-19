@@ -1,3 +1,5 @@
+use super::*;
+
 use base64::encode;
 use crypto::hmac::Hmac;
 use crypto::mac::Mac;
@@ -7,8 +9,6 @@ use std::collections::BTreeMap;
 
 use crate::{
     http_client::{HttpError, HttpResponse, SignAndDispatch, SignedRequest},
-    regions::Region,
-    schema::Schema,
 };
 
 pub const OSS_PREFIX: &str = "x-oss-meta-";

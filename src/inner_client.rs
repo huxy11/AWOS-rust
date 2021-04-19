@@ -1,10 +1,18 @@
-use oss_sdk::DefaultOssclient;
+use super::*;
+
+use oss_sdk::OssClient;
 
 use crate::AwosApi;
 
+pub(crate) struct S3Client {
+    pub(crate) inner: S3Inner,
+    pub(crate) bucket: String,
+    pub(crate) region: String,
+}
+
 pub(crate) enum InnerClient {
-    AWS,
-    OSS(DefaultOssclient),
+    AWS(S3Client),
+    OSS(OssClient),
 }
 
 impl AwosApi for InnerClient {
@@ -14,7 +22,7 @@ impl AwosApi for InnerClient {
         R: std::iter::FromIterator<String>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.list_object(opts),
         }
     }
@@ -24,7 +32,7 @@ impl AwosApi for InnerClient {
         O: Into<Option<crate::ListOptions<'a>>>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.list_details(opts),
         }
     }
@@ -35,7 +43,7 @@ impl AwosApi for InnerClient {
         M: Into<Option<std::collections::HashSet<&'a str>>>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.get(key, meta_keys_filter),
         }
     }
@@ -50,7 +58,7 @@ impl AwosApi for InnerClient {
         M: Into<Option<std::collections::HashSet<&'a str>>>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.get_as_buffer(key, meta_keys_filter),
         }
     }
@@ -60,7 +68,7 @@ impl AwosApi for InnerClient {
         S: AsRef<str>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.head(key),
         }
     }
@@ -73,7 +81,7 @@ impl AwosApi for InnerClient {
         O: Into<Option<crate::PutOrCopyOptions<'a>>>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.put(key, data, opts),
         }
     }
@@ -86,7 +94,7 @@ impl AwosApi for InnerClient {
         O: Into<Option<crate::PutOrCopyOptions<'a>>>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.copy(src, key, opts),
         }
     }
@@ -96,7 +104,7 @@ impl AwosApi for InnerClient {
         S: AsRef<str>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.del(key),
         }
     }
@@ -107,7 +115,7 @@ impl AwosApi for InnerClient {
         K: Default + IntoIterator<Item = S>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.del_multi(keys),
         }
     }
@@ -118,7 +126,7 @@ impl AwosApi for InnerClient {
         O: Into<Option<crate::SignUrlOptions<'a>>>,
     {
         match self {
-            InnerClient::AWS => unimplemented!(),
+            InnerClient::AWS(_) => unimplemented!(),
             InnerClient::OSS(_oss_client) => _oss_client.sign_url(key, opts),
         }
     }

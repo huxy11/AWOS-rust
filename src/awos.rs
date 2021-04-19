@@ -3,7 +3,10 @@ use std::{
     iter::FromIterator,
 };
 
-use crate::inner_client::InnerClient;
+use crate::inner_client::{InnerClient, S3Client};
+use rusoto_core::HttpClient;
+use rusoto_credential::StaticProvider;
+use rusoto_s3::S3Client as S3Inner;
 
 use super::*;
 
@@ -86,6 +89,37 @@ impl AwosClient {
                 access_key_id,
                 access_key_secret,
             )),
+        })
+    }
+    pub fn new_with_aws<'a, S1, S2, S3, S4, S5>(
+        region: S1,
+        schema: S2,
+        bucket: S3,
+        access_key_id: S4,
+        access_key_secret: S5,
+    ) -> Result<Self>
+    where
+        S1: AsRef<str>,
+        S2: Into<Option<&'a str>>,
+        S3: Into<Option<&'a str>>,
+        S4: Into<String>,
+        S5: Into<String>,
+    {
+        let credentials_provider =
+            StaticProvider::new(access_key_id.into(), access_key_secret.into(), None, None);
+        let request_dispatcher = HttpClient::new().expect("failed to create request dispatcher");
+        // let aws_client =
+        let s3_client = S3Client {
+            inner: S3Inner::new_with(
+                request_dispatcher,
+                credentials_provider,
+                region.as_ref().parse()?,
+            ),
+            bucket: bucket.into().unwrap_or_default().to_string(),
+            region: region.as_ref().to_string(),
+        };
+        Ok(Self {
+            inner: InnerClient::AWS(s3_client),
         })
     }
 }

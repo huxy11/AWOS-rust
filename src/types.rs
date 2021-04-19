@@ -1,5 +1,12 @@
 use bytes::Bytes;
-use std::{collections::HashMap, iter::FromIterator, pin::Pin, time::SystemTime};
+use rusoto_s3::{GetObjectOutput, ListObjectsOutput};
+use std::{
+    collections::{HashMap, HashSet},
+    io::Read,
+    iter::FromIterator,
+    pin::Pin,
+    time::SystemTime,
+};
 
 use oss_sdk::{HttpResponse, OSS_PREFIX};
 
@@ -23,7 +30,7 @@ pub struct GetAsBufferResp {
 pub struct ListDetailsResp {
     pub is_truncated: bool,
     pub objects: Vec<ObjectDetails>,
-    pub prefixes: Vec<String>,
+    pub prefixe: String,
     pub next_marker: String,
 }
 #[derive(Debug, Clone, Default)]
@@ -63,7 +70,34 @@ impl From<HttpResponse> for GetAsBufferResp {
         }
     }
 }
-
+impl From<GetObjectOutput> for GetAsBufferResp {
+    fn from(mut resp: GetObjectOutput) -> Self {
+        let mut buf = Vec::new();
+        let meta = resp.metadata.take().unwrap_or_default();
+        let mut headers = HashMap::new();
+        if let Some(_cache_control) = resp.cache_control.take() {
+            headers.insert("cache-control".to_owned(), _cache_control);
+        }
+        if let Some(_body) = resp.body.take() {
+            //TODO Async
+            _body.into_blocking_read().read_to_end(&mut buf).ok();
+        }
+        let content = Box::pin(buf.into());
+        Self {
+            content,
+            meta,
+            headers,
+        }
+    }
+}
+impl GetAsBufferResp {
+    pub(crate) fn filter<'a>(&mut self, meta_keys_filter: HashSet<&'a str>) {
+        self.meta = std::mem::take(&mut self.meta)
+            .into_iter()
+            .filter(|(k, _)| meta_keys_filter.contains(k.as_str()))
+            .collect();
+    }
+}
 impl From<GetAsBufferResp> for GetResp {
     fn from(resp: GetAsBufferResp) -> Self {
         let meta = resp.meta;
@@ -77,7 +111,31 @@ impl From<GetAsBufferResp> for GetResp {
         }
     }
 }
-
+impl From<ListObjectsOutput> for ListDetailsResp {
+    fn from(mut out_put: ListObjectsOutput) -> Self {
+        let objects = out_put.contents.take().map(|_obj_vec| {
+            _obj_vec
+                .into_iter()
+                .map(|mut _obj| ObjectDetails {
+                    key: _obj.key.take().unwrap_or_default(),
+                    last_modified: _obj.last_modified.take().unwrap_or_default(),
+                    e_tag: _obj.e_tag.take().unwrap_or_default(),
+                    size: _obj
+                        .size
+                        .take()
+                        .map(|_size| _size.to_string())
+                        .unwrap_or_default(),
+                })
+                .collect::<Vec<_>>()
+        });
+        ListDetailsResp {
+            is_truncated: out_put.is_truncated.take().unwrap_or_default(),
+            next_marker: out_put.next_marker.take().unwrap_or_default(),
+            prefixe: out_put.prefix.take().unwrap_or_default(),
+            objects: objects.unwrap_or_default(),
+        }
+    }
+}
 impl ListDetailsResp {
     pub(crate) fn to_obj_names<R>(self) -> R
     where

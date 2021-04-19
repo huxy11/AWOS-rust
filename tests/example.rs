@@ -38,6 +38,7 @@ fn awos_with_oss_test() {
     let opts = PutOrCopyOptions::new([("test-key", "test-val")].to_vec(), None, None, None, None);
     let resp = awos_instance.put(FILE_NAME, buf, opts);
     assert!(resp.is_ok());
+    println!("{:#?}", resp);
 
     let mut hs = HashSet::new();
     hs.insert("test-key");
@@ -92,9 +93,6 @@ fn oss_smoke_test() {
 
     let resp = oss_instance.list_object::<_, Vec<_>>(None);
     assert!(resp.is_ok());
-
-    let url = oss_instance.sign_url("A", None);
-    println!("{:?}", url);
 
     let resp = oss_instance.head(FILE_NAME);
     assert!(resp.is_ok() && resp.unwrap().contains_key("x-oss-meta-test-key"));
