@@ -1,5 +1,6 @@
 use oss_sdk::HttpError;
 use quick_xml::Error as QxmlError;
+ 
 use rusoto_core::region::ParseRegionError;
 use std::{error::Error as StdError, str::ParseBoolError};
 use std::{io::Error as IoError, str::Utf8Error, string::FromUtf8Error};
@@ -66,7 +67,6 @@ pub enum ObjectError {
     #[display(fmt = "HEAD ERROR: {:#?}", msg)]
     HeadError { msg: String },
 }
-
 
 pub type Result<T> = std::result::Result<T, Error>;
 

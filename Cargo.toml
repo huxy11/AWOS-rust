@@ -1,16 +1,21 @@
 [package]
-name = "awos-rust"
+name = "awos_rust"
 version = "0.1.0"
 authors = ["HuXingYu <huxingyu@shimo.com>"]
 edition = "2018"
 
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["oss_enabled"]
+oss_enabled = ["oss_sdk"]
+s3_enabled = []
 
 [dependencies]
 derive_more = "0.99.5"
 
-oss_sdk = {path = "./oss_sdk", package = "oss_sdk"}
+oss_sdk = {path = "./oss_sdk", package = "oss_sdk", optional = true}
+
 
 bytes = "1.0"
 
@@ -18,10 +23,9 @@ reqwest = { version = "0.11.3", features = ["blocking"] }
 
 quick-xml = "0.22"
 
-# socket2 = "0.4.0"
-rusoto_core = "0.46.0"
-rusoto_s3 = "0.46.0"
-rusoto_credential = "0.46.0"
+rusoto_core = {version = "0.46.0" }
+rusoto_s3 = {version = "0.46.0"}
+rusoto_credential = {version = "0.46.0"}
+rusoto_signature = {version ="0.46.0"}
 
 tokio = "1.5"
-rusoto_signature = "0.46.0"

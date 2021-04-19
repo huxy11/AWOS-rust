@@ -50,7 +50,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
                             result.next_marker = reader.read_text(e.name(), &mut Vec::new())?
                         }
                         b"Prefixes" => {
-                            result.prefixe = reader.read_text(e.name(),&mut Vec::new())?
+                            result.prefixe = reader.read_text(e.name(), &mut Vec::new())?
                         }
                         _ => (),
                     },
