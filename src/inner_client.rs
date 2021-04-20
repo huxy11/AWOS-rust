@@ -35,10 +35,11 @@ impl AwosApi for InnerClient {
         }
     }
 
-    fn get<'a, S, M>(&self, key: S, meta_keys_filter: M) -> crate::errors::Result<crate::GetResp>
+    fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> crate::errors::Result<crate::GetResp>
     where
         S: AsRef<str>,
-        M: Into<Option<std::collections::HashSet<&'a str>>>,
+        M: Into<Option<F>>,
+        F: IntoIterator<Item = &'a str>,
     {
         match self {
             InnerClient::AWS => unimplemented!(),
@@ -46,14 +47,15 @@ impl AwosApi for InnerClient {
         }
     }
 
-    fn get_as_buffer<'a, S, M>(
+    fn get_as_buffer<'a, S, M, F>(
         &self,
         key: S,
         meta_keys_filter: M,
     ) -> crate::errors::Result<crate::GetAsBufferResp>
     where
         S: AsRef<str>,
-        M: Into<Option<std::collections::HashSet<&'a str>>>,
+        M: Into<Option<F>>,
+        F: IntoIterator<Item = &'a str>,
     {
         match self {
             InnerClient::AWS => unimplemented!(),

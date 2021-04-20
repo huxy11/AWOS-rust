@@ -1,27 +1,39 @@
-use std::{
-    collections::{HashMap, HashSet},
-    iter::FromIterator,
-};
+use std::{collections::HashMap, iter::FromIterator};
 
-use crate::inner_client::{InnerClient};
 use super::*;
+use crate::inner_client::InnerClient;
 
 pub trait AwosApi {
+    /// 获取当前 Bucket 下 Objects 的名称列表
+    /// 可选参数详见其定义。
+    /// 结果可以是任何从迭代器生成的集合类型。
     fn list_object<'a, O, R>(&self, opts: O) -> Result<R>
     where
         O: Into<Option<ListOptions<'a>>>,
         R: FromIterator<String>;
+    /// 获取当前 Bucket 下 Objects 的信息列表
+    /// 可选参数详见其定义。
     fn list_details<'a, O>(&self, opts: O) -> Result<ListDetailsResp>
     where
         O: Into<Option<ListOptions<'a>>>;
-    fn get<'a, S, M>(&self, key: S, meta_keys_filter: M) -> Result<GetResp>
+
+    /// Get 一个 Object
+    /// 可选参数是一个 Metas 的过滤器， 仅在此中指定的 Metas 才会被返回。
+    fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<GetResp>
     where
         S: AsRef<str>,
-        M: Into<Option<HashSet<&'a str>>>;
-    fn get_as_buffer<'a, S, M>(&self, key: S, meta_keys_filter: M) -> Result<GetAsBufferResp>
+        M: Into<Option<F>>,
+        F: IntoIterator<Item = &'a str>;
+    /// Get 一个 Object, Content 为在buffer中的二进制数据。
+    /// 可选参数是一个 Metas 的过滤器，传入 None 时不过滤， 传入其他集合类型时，仅返集合中指定的 Metas。
+    ///
+    /// TODO: 因为这里用了泛型， 传入 None 的时候无法推断出 F 的类型， 只能通过 ::<> 传入一个类型变量。
+    ///       不是很好用，需要找个方法改进一下。
+    fn get_as_buffer<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<GetAsBufferResp>
     where
         S: AsRef<str>,
-        M: Into<Option<HashSet<&'a str>>>;
+        M: Into<Option<F>>,
+        F: IntoIterator<Item = &'a str>;
     fn head<S>(&self, key: S) -> Result<HashMap<String, String>>
     where
         S: AsRef<str>;
@@ -51,30 +63,39 @@ pub trait AwosApi {
 
 pub struct AwosClient {
     inner: InnerClient,
+    // is_internal: bool,
 }
 
 impl AwosClient {
     /// AWOS client, with OSS internal.
     /// # Args
-    /// region: Strings alike. Invalid input would be treated as default. e.g. "北京", "oss-cn-beijing".to_string()
-    /// shcema: None or Strings alike. Invalid input and None would be treated as default. e.g. None, "http", "HTTPS".to_string()
+    ///
     /// bucket: None or Strings alike.
     /// access_key_id: Strings alike. e.g. "JjknmtKqNHJGEXpJmHsfjNm8"
     /// access_key_id: Strings alike. e.g. "5wWr3xm1mGmPBM0wsRz48VTiNEXq6z"
-    pub fn new_with_oss<'a, S1, S2, S3, S4, S5>(
-        region: S1,
-        schema: S2,
-        bucket: S3,
-        access_key_id: S4,
-        access_key_secret: S5,
+    pub fn new_with_oss<'a, S1, S2, S3, S4>(
+        endpoint: S1,
+        bucket: S2,
+        access_key_id: S3,
+        access_key_secret: S4,
     ) -> Result<Self>
     where
         S1: AsRef<str>,
         S2: Into<Option<&'a str>>,
-        S3: Into<Option<&'a str>>,
+        S3: Into<String>,
         S4: Into<String>,
-        S5: Into<String>,
     {
+        let url = endpoint.as_ref();
+        let schema = if url.starts_with("https") {
+            "https"
+        } else {
+            "http"
+        };
+        let region = url
+            .replace(schema, "")
+            .replace("://", "")
+            .replace("-internal", "");
+
         Ok(Self {
             inner: InnerClient::OSS(OSSClient::new_oss_cli(
                 region,
@@ -103,18 +124,20 @@ impl AwosApi for AwosClient {
         self.inner.list_details(opts)
     }
 
-    fn get<'a, S, M>(&self, key: S, meta_keys_filter: M) -> Result<GetResp>
+    fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<GetResp>
     where
         S: AsRef<str>,
-        M: Into<Option<HashSet<&'a str>>>,
+        M: Into<Option<F>>,
+        F: IntoIterator<Item = &'a str>,
     {
         self.inner.get(key, meta_keys_filter)
     }
 
-    fn get_as_buffer<'a, S, M>(&self, key: S, meta_keys_filter: M) -> Result<GetAsBufferResp>
+    fn get_as_buffer<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<GetAsBufferResp>
     where
         S: AsRef<str>,
-        M: Into<Option<HashSet<&'a str>>>,
+        M: Into<Option<F>>,
+        F: IntoIterator<Item = &'a str>,
     {
         self.inner.get_as_buffer(key, meta_keys_filter)
     }

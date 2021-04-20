@@ -113,7 +113,7 @@ impl FromStr for Region {
     fn from_str(s: &str) -> Result<Self, ParseRegionError> {
         let v: &str = &s.to_lowercase();
         match v {
-            "北京" | "oss-cn-beijing" | "osscnbeijing" => Ok(Region::BeiJing),
+            "北京" | "oss-cn-beijing" | "osscnbeijing" | "oss-cn-beijing.aliyuncs.com" | "oss-cn-beijing-internal.aliyuncs.com" => Ok(Region::BeiJing),
             s => Err(ParseRegionError::new(s)),
         }
     }

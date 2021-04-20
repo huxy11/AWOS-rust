@@ -50,7 +50,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
                             result.next_marker = reader.read_text(e.name(), &mut Vec::new())?
                         }
                         b"Prefixes" => {
-                            result.prefixe = reader.read_text(e.name(), &mut Vec::new())?
+                            result.prefix = reader.read_text(e.name(), &mut Vec::new())?
                         }
                         _ => (),
                     },
@@ -73,25 +73,28 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
             }))
         }
     }
-    fn get<'a, S, M>(&self, key: S, meta_keys_filter: M) -> Result<types::GetResp>
+    fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<types::GetResp>
     where
         S: AsRef<str>,
-        M: Into<Option<HashSet<&'a str>>>,
+        M: Into<Option<F>>,
+        F: IntoIterator<Item = &'a str>,
     {
         Ok(self.get_as_buffer(key, meta_keys_filter)?.into())
     }
 
-    fn get_as_buffer<'a, S, M>(&self, key: S, meta_keys_filter: M) -> Result<GetAsBufferResp>
+    fn get_as_buffer<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<GetAsBufferResp>
     where
         S: AsRef<str>,
-        M: Into<Option<HashSet<&'a str>>>,
+        M: Into<Option<F>>,
+        F: IntoIterator<Item = &'a str>,
     {
         let rqst = self.get_request(key.as_ref());
         let resp = self.sign_and_dispatch(rqst)?;
         if resp.status.is_success() {
             let mut get_resp: GetAsBufferResp = resp.into();
             if let Some(_meta_keys_filter) = meta_keys_filter.into() {
-                get_resp.filter(_meta_keys_filter);
+                let _filter = _meta_keys_filter.into_iter().collect();
+                get_resp.filter(_filter);
             }
             Ok(get_resp)
         } else {
@@ -104,9 +107,10 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
     where
         S: AsRef<str>,
     {
-        let mut resp = self.get_as_buffer(key, None)?;
-        resp.headers.extend(resp.meta.into_iter());
-        Ok(resp.headers)
+        todo!();
+        // let mut resp = self.get_as_buffer(key, None)?;
+        // resp.headers.extend(resp.meta.into_iter());
+        // Ok(resp.headers)
     }
 
     fn put<'a, S, D, O>(&self, key: S, data: D, opts: O) -> Result<()>

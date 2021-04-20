@@ -26,13 +26,18 @@ pub struct GetAsBufferResp {
 }
 
 /// Response to ListDetails
+/// is_truncated:   是否被截断。
+/// objects:        结果列表。
+/// prefix:         返回的 Prefix Header 项
+/// next_marker:    返回的 Next_marker Header 项，用于连续请求。
 #[derive(Clone, Debug, Default)]
 pub struct ListDetailsResp {
     pub is_truncated: bool,
     pub objects: Vec<ObjectDetails>,
-    pub prefixe: String,
+    pub prefix: String,
     pub next_marker: String,
 }
+/// Object 的详细信息
 #[derive(Debug, Clone, Default)]
 pub struct ObjectDetails {
     pub key: String,
@@ -90,11 +95,15 @@ impl From<GetObjectOutput> for GetAsBufferResp {
         }
     }
 }
+
 impl GetAsBufferResp {
-    pub(crate) fn filter<'a>(&mut self, meta_keys_filter: HashSet<&'a str>) {
+    pub(crate) fn filter(&mut self, meta_keys_filter: HashSet<&str>) {
         self.meta = std::mem::take(&mut self.meta)
             .into_iter()
-            .filter(|(k, _)| meta_keys_filter.contains(k.as_str()))
+            .filter(|(k, _)| {
+                meta_keys_filter.contains(k.as_str().trim_start_matches("x-oss-meta-"))
+                    || meta_keys_filter.contains(k.as_str())
+            })
             .collect();
     }
 }
@@ -131,7 +140,7 @@ impl From<ListObjectsOutput> for ListDetailsResp {
         ListDetailsResp {
             is_truncated: out_put.is_truncated.take().unwrap_or_default(),
             next_marker: out_put.next_marker.take().unwrap_or_default(),
-            prefixe: out_put.prefix.take().unwrap_or_default(),
+            prefix: out_put.prefix.take().unwrap_or_default(),
             objects: objects.unwrap_or_default(),
         }
     }
@@ -145,6 +154,8 @@ impl ListDetailsResp {
     }
 }
 
+/// 上传/复制 Object 方法的可选参数
+/// 不为空时，会在请求中添加对映的 Header
 pub struct PutOrCopyOptions<'a> {
     pub meta: Vec<(&'a str, &'a str)>,
     pub content_type: &'a str,
@@ -154,17 +165,27 @@ pub struct PutOrCopyOptions<'a> {
 }
 
 impl<'a> PutOrCopyOptions<'a> {
-    pub fn new<S, MM, M>(
+    /// 上传/复制方法可选参参数的构建, 其生命周期与传入 String Literal 中最短者一致。
+    /// meta, 键置对的集合，
+    ///
+    /// #Example
+    /// ```
+    /// let put_opts = awos_rust::PutOrCopyOptions::new(vec![("test-key", "test-val")], "content-type-unknown", None, None, None);
+    /// ```
+    pub fn new<M, KV, S1, S2, S3, S4>(
         meta: M,
-        content_type: S,
-        cache_control: S,
-        content_disposition: S,
-        content_encoding: S,
+        content_type: S1,
+        cache_control: S2,
+        content_disposition: S3,
+        content_encoding: S4,
     ) -> Self
     where
-        S: Into<Option<&'a str>>,
-        MM: Default + IntoIterator<Item = (&'a str, &'a str)>,
-        M: Into<Option<MM>>,
+        M: Into<Option<KV>>,
+        KV: Default + IntoIterator<Item = (&'a str, &'a str)>,
+        S1: Into<Option<&'a str>>,
+        S2: Into<Option<&'a str>>,
+        S3: Into<Option<&'a str>>,
+        S4: Into<Option<&'a str>>,
     {
         Self {
             meta: meta.into().unwrap_or_default().into_iter().collect(),
@@ -189,7 +210,8 @@ impl<'a> PutOrCopyOptions<'a> {
         headers_vec
     }
 }
-
+/// List 相关操作的可选参数
+/// 生命周期与传入的 String Literal References 中最短的一致
 pub struct ListOptions<'a> {
     pub prefix: &'a str,
     pub marker: &'a str,
@@ -197,6 +219,14 @@ pub struct ListOptions<'a> {
     pub max_keys: usize,
 }
 impl<'a> ListOptions<'a> {
+    /// ListOptions 构造
+    /// 四个参数皆为可选, 传入 None 或者对映类型， 不需要用Some包裹。
+    ///
+    /// #Example
+    /// ```
+    /// let list_opts = awos_rust::ListOptions::new("prefix", "marker", None, 2021);
+    /// ```
+
     pub fn new<S1, S2, S3, N>(prefix: S1, marker: S2, delimiter: S3, max_keys: N) -> Self
     where
         S1: Into<Option<&'a str>>,
@@ -226,12 +256,22 @@ impl<'a> ListOptions<'a> {
     }
 }
 
+/// 构建 Signed Url 需要的参数
 pub struct SignUrlOptions<'a> {
     pub method: &'a str,
     pub expires: u64,
 }
 
 impl<'a> SignUrlOptions<'a> {
+    /// SignUrlOptions 构建
+    /// 两个参数均为可选，传入 None 会使用默认值。
+    /// method: 默认为 "GET"
+    /// expire: 默认为当前时间 + 3600s
+    ///
+    /// #Example
+    /// ```
+    /// let sign_url_opts = awos_rust::SignUrlOptions::new("Put", None);
+    ///
     pub fn new<M, E>(method: M, expires: E) -> Self
     where
         M: Into<Option<&'a str>>,
