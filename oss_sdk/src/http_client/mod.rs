@@ -7,7 +7,7 @@ mod requests;
 mod responses;
 mod sign_and_dispatch;
 
-pub use errors::HttpError;
+pub use errors::DispatchError;
 pub use requests::SignedRequest;
 pub use responses::HttpResponse;
 pub use sign_and_dispatch::SignAndDispatch;

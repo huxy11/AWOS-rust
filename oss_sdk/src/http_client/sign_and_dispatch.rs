@@ -2,14 +2,14 @@ use std::str::FromStr;
 
 use reqwest::{header::HeaderName, Method};
 
-use super::{errors::HttpError, responses::HttpResponse, SignedRequest};
+use super::{errors::DispatchError, responses::HttpResponse, SignedRequest};
 
 pub trait SignAndDispatch {
     fn sign_and_dispatch(
         &self,
         request: SignedRequest,
         // timeout: Option<Duration>,
-    ) -> Result<HttpResponse, HttpError>;
+    ) -> Result<HttpResponse, DispatchError>;
 }
 
 impl SignAndDispatch for reqwest::blocking::Client {
@@ -17,14 +17,14 @@ impl SignAndDispatch for reqwest::blocking::Client {
         &self,
         mut request: SignedRequest,
         // timeout: Option<Duration>,
-    ) -> Result<HttpResponse, HttpError> {
+    ) -> Result<HttpResponse, DispatchError> {
         request.oss_sign();
         let url = request.generate_url();
         let mut headers = reqwest::header::HeaderMap::new();
         for (key, val) in request.headers.iter() {
             headers.insert(HeaderName::from_bytes(key.as_bytes())?, val.parse()?);
         }
-        let method = Method::from_str(request.method).map_err(|_| HttpError::InvalidMethod)?;
+        let method = Method::from_str(request.method).map_err(|_| DispatchError::InvalidMethod)?;
         let mut request_builder = self
             .request(method, &url)
             .headers(headers)

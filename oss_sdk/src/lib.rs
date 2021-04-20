@@ -7,9 +7,10 @@ mod types;
 
 pub use types::*;
 
+
 pub use oss::OSS_PREFIX;
 
-pub use crate::http_client::{HttpError, HttpResponse, SignAndDispatch};
+pub use crate::http_client::{DispatchError as OSSError, HttpResponse, SignAndDispatch};
 pub use crate::oss::OSSClient;
 
 pub type OssClient = OSSClient<reqwest::blocking::Client>;

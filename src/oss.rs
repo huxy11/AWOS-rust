@@ -68,9 +68,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
             }
             Ok(result)
         } else {
-            Err(Error::Object(ObjectError::GetError {
-                msg: resp_to_error(&resp),
-            }))
+            Err(Error::Http(resp.status.as_u16().into()))
         }
     }
     fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<types::GetResp>
@@ -98,9 +96,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
             }
             Ok(get_resp)
         } else {
-            Err(Error::Object(ObjectError::GetError {
-                msg: resp_to_error(&resp),
-            }))
+            Err(Error::Http(resp.status.as_u16().into()))
         }
     }
     fn head<S>(&self, key: S) -> Result<std::collections::HashMap<String, String>>
@@ -128,9 +124,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
         if resp.status.is_success() {
             Ok(())
         } else {
-            Err(Error::Object(ObjectError::PutError {
-                msg: resp_to_error(&resp),
-            }))
+            Err(Error::Http(resp.status.as_u16().into()))
         }
     }
 
@@ -151,9 +145,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
         if resp.status.is_success() {
             Ok(())
         } else {
-            Err(Error::Object(ObjectError::PutError {
-                msg: resp_to_error(&resp),
-            }))
+            Err(Error::Http(resp.status.as_u16().into()))
         }
     }
 
@@ -166,9 +158,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
         if resp.status.is_success() {
             Ok(())
         } else {
-            Err(Error::Object(ObjectError::DeleteError {
-                msg: resp_to_error(&resp),
-            }))
+            Err(Error::Http(resp.status.as_u16().into()))
         }
     }
 

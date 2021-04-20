@@ -1,4 +1,4 @@
-use awos_rust::{AwosApi, AwosClient, OSSClient, PutOrCopyOptions, SignUrlOptions};
+use awos_rust::{AwosApi, AwosClient, PutOrCopyOptions, SignUrlOptions};
 
 use std::collections::HashSet;
 
@@ -89,18 +89,9 @@ fn awos_with_oss_test() {
 
     /* Check if Del works */
     let resp = awos_instance.get::<_, _, Vec<_>>(FILE_NAME, None);
-    assert!(
-        resp.is_err()
-            && format!("{}", resp.unwrap_err()).starts_with("GET ERROR: \"SatusCode:404 Not Found")
-    );
-}
-fn default_oss() -> OSSClient<reqwest::blocking::Client> {
-    OSSClient::new(
-        reqwest::blocking::Client::new(),
-        "北京",
-        None,
-        std::env::var("OSS_BUCKET").unwrap().as_str(),
-        std::env::var("OSS_KEY_ID").unwrap(),
-        std::env::var("OSS_KEY_SECRET").unwrap(),
-    )
+    assert!(resp.is_err());
+    let resp_err = resp.unwrap_err();
+    assert!(resp_err.is_not_found()); //should be 404NotFound
+    assert!(!resp_err.is_forbidden()); //other than
+    assert!(!resp_err.is_bad_request());
 }

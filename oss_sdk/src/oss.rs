@@ -7,9 +7,7 @@ use crypto::sha1::Sha1;
 
 use std::collections::BTreeMap;
 
-use crate::{
-    http_client::{HttpError, HttpResponse, SignAndDispatch, SignedRequest},
-};
+use crate::http_client::{HttpResponse, SignAndDispatch, SignedRequest};
 
 pub const OSS_PREFIX: &str = "x-oss-meta-";
 pub const OSS_CANONOCALIZED_PREFIX: &str = "x-oss-";
@@ -82,7 +80,7 @@ impl<C: SignAndDispatch> OSSClient<C> {
     {
         self.generate_request("DELETE", object, None)
     }
-    pub fn sign_and_dispatch(&self, request: SignedRequest) -> Result<HttpResponse, HttpError> {
+    pub fn sign_and_dispatch(&self, request: SignedRequest) -> Result<HttpResponse, OSSError> {
         self.client.sign_and_dispatch(request)
     }
     pub fn get_signed_url<'a, H>(

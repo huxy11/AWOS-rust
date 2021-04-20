@@ -1,9 +1,9 @@
 /// Generic error type returned by all http requests.
 #[derive(Debug, PartialEq, Display)]
-pub enum HttpError {
+pub enum DispatchError {
     InvalidMethod,
     HeaderError(String),
-    DispatchError(String),
+    InternalError(String),
     Unknown(String),
     // /// A service-specific error occurred.
     // Service(E),
@@ -21,19 +21,19 @@ pub enum HttpError {
     // Blocking,
 }
 
-impl From<reqwest::Error> for HttpError {
+impl From<reqwest::Error> for DispatchError {
     fn from(e: reqwest::Error) -> Self {
-        Self::DispatchError(e.to_string())
+        Self::InternalError(e.to_string())
     }
 }
-impl From<reqwest::header::InvalidHeaderName> for HttpError {
+impl From<reqwest::header::InvalidHeaderName> for DispatchError{
     fn from(e: reqwest::header::InvalidHeaderName) -> Self {
         let mut s = "InvalidKey".to_string();
         s.push_str(&e.to_string());
         Self::HeaderError(s)
     }
 }
-impl From<reqwest::header::InvalidHeaderValue> for HttpError {
+impl From<reqwest::header::InvalidHeaderValue> for DispatchError {
     fn from(e: reqwest::header::InvalidHeaderValue) -> Self {
         let mut s = "InvalidValue".to_string();
         s.push_str(&e.to_string());
