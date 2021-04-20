@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::*;
-use crate::inner_client::InnerClient;
+use crate::{aws::S3Client, inner_client::InnerClient};
 
 pub trait AwosApi {
     /// 获取当前 Bucket 下 Objects 的名称列表。 以 Vector 返回。
@@ -69,7 +69,7 @@ pub struct AwosClient {
 impl AwosClient {
     /// AWOS client, with OSS internal.
     /// # Args
-    ///
+    /// enpoint: Public enpoint
     /// bucket: None or Strings alike.
     /// access_key_id: Strings alike. e.g. "JjknmtKqNHJGEXpJmHsfjNm8"
     /// access_key_id: Strings alike. e.g. "5wWr3xm1mGmPBM0wsRz48VTiNEXq6z"
@@ -101,6 +101,27 @@ impl AwosClient {
                 access_key_secret,
             )),
         })
+    }
+
+    pub fn new_with_s3<'a, S1, S2, S3, S4>(
+        endpoint: S1,
+        bucket: S2,
+        access_key_id: S3,
+        access_key_secret: S4,
+    ) -> Result<Self>
+    where
+        S1: Into<String>,
+        S2: Into<Option<String>>,
+        S3: Into<String>,
+        S4: Into<String>,
+    {
+        let inner = InnerClient::AWS(S3Client::new_s3_cli(
+            endpoint.into(),
+            bucket.into().unwrap_or_default(),
+            access_key_id.into(),
+            access_key_secret.into(),
+        )?);
+        Ok(Self { inner })
     }
 }
 

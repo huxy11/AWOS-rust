@@ -13,9 +13,24 @@ pub enum Error {
     /// 将Utf8转换成String时可能出现的错误
     StrConvert(Utf8Error),
     OSS(OSSError),
+    #[display(fmt = "Aws S3 ERROR")]
+    // AWS(S3Error),
+    AWS(S3Error),
     ParseRegion(ParseRegionError),
     Qxml(QxmlError),
     ParseBool(ParseBoolError),
+}
+
+#[derive(Debug, Display)]
+pub enum S3Error {
+    #[display(fmt = "PUT ERROR: {:#?}", msg)]
+    PutError { msg: String },
+    #[display(fmt = "GET ERROR: {:#?}", msg)]
+    GetError { msg: String },
+    #[display(fmt = "DELETE ERROR: {:#?}", msg)]
+    DeleteError { msg: String },
+    #[display(fmt = "HEAD ERROR: {:#?}", msg)]
+    HeadError { msg: String },
 }
 
 /* for Convenient Http check */
@@ -63,6 +78,11 @@ impl From<IoError> for Error {
 impl From<OSSError> for Error {
     fn from(e: OSSError) -> Error {
         Error::OSS(e)
+    }
+}
+impl From<S3Error> for Error {
+    fn from(e: S3Error) -> Error {
+        Error::AWS(e)
     }
 }
 
