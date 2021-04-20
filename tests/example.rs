@@ -12,9 +12,8 @@ fn awos_with_oss_test() {
     let access_key_id = std::env::var("OSS_KEY_ID").unwrap();
     let access_key_secret = std::env::var("OSS_KEY_SECRET").unwrap();
 
-    // endpoint 里的 -internal 会被去除掉。
     let awos_instance = AwosClient::new_with_oss(
-        "https://oss-cn-beijing-internal.aliyuncs.com",
+        "https://oss-cn-beijing.aliyuncs.com",
         bucket.as_ref(),
         access_key_id,
         access_key_secret,
@@ -62,13 +61,17 @@ fn awos_with_oss_test() {
     let resp_content = std::pin::Pin::into_inner(resp.unwrap().content);
     assert_eq!(*BUF, *resp_content);
 
+    /* Get, 不进行过滤 */
+    let resp = awos_instance.get::<_, _, Vec<_>>(FILE_NAME, None);
+    assert!(resp.is_ok() && resp.unwrap().content == String::from_utf8_lossy(BUF));
+
     /* ListObject, 指定返回为 Vector */
-    let resp = awos_instance.list_object::<_, Vec<_>>(None);
+    let resp = awos_instance.list_object(None);
     assert!(resp.is_ok());
     let _v = resp.unwrap(); // Vector with
 
     /* ListObject, 指定返回为 HashSet */
-    let resp = awos_instance.list_object::<_, HashSet<_>>(None);
+    let resp = awos_instance.list_object(None);
     assert!(resp.is_ok());
     let _hs = resp.unwrap(); //  HashSet with
 

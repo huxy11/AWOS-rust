@@ -14,10 +14,9 @@ impl Default for InnerClient {
 }
 
 impl AwosApi for InnerClient {
-    fn list_object<'a, O, R>(&self, opts: O) -> crate::errors::Result<R>
+    fn list_object<'a, O>(&self, opts: O) -> crate::errors::Result<Vec<String>>
     where
         O: Into<Option<crate::ListOptions<'a>>>,
-        R: std::iter::FromIterator<String>,
     {
         match self {
             InnerClient::AWS => unimplemented!(),

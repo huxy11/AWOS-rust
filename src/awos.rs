@@ -1,16 +1,15 @@
-use std::{collections::HashMap, iter::FromIterator};
+use std::collections::HashMap;
 
 use super::*;
 use crate::inner_client::InnerClient;
 
 pub trait AwosApi {
-    /// 获取当前 Bucket 下 Objects 的名称列表
+    /// 获取当前 Bucket 下 Objects 的名称列表。 以 Vector 返回。
     /// 可选参数详见其定义。
-    /// 结果可以是任何从迭代器生成的集合类型。
-    fn list_object<'a, O, R>(&self, opts: O) -> Result<R>
+    fn list_object<'a, O>(&self, opts: O) -> Result<Vec<String>>
     where
-        O: Into<Option<ListOptions<'a>>>,
-        R: FromIterator<String>;
+        O: Into<Option<ListOptions<'a>>>;
+
     /// 获取当前 Bucket 下 Objects 的信息列表
     /// 可选参数详见其定义。
     fn list_details<'a, O>(&self, opts: O) -> Result<ListDetailsResp>
@@ -29,6 +28,7 @@ pub trait AwosApi {
     ///
     /// TODO: 因为这里用了泛型， 传入 None 的时候无法推断出 F 的类型， 只能通过 ::<> 传入一个类型变量。
     ///       不是很好用，需要找个方法改进一下。
+
     fn get_as_buffer<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<GetAsBufferResp>
     where
         S: AsRef<str>,
@@ -91,11 +91,7 @@ impl AwosClient {
         } else {
             "http"
         };
-        let region = url
-            .replace(schema, "")
-            .replace("://", "")
-            .replace("-internal", "");
-
+        let region = url.trim_start_matches(schema).trim_start_matches("://");
         Ok(Self {
             inner: InnerClient::OSS(OSSClient::new_oss_cli(
                 region,
@@ -109,10 +105,9 @@ impl AwosClient {
 }
 
 impl AwosApi for AwosClient {
-    fn list_object<'a, O, R>(&self, opts: O) -> Result<R>
+    fn list_object<'a, O>(&self, opts: O) -> Result<Vec<String>>
     where
         O: Into<Option<ListOptions<'a>>>,
-        R: FromIterator<String>,
     {
         self.inner.list_object(opts)
     }

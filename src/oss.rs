@@ -1,16 +1,16 @@
 use quick_xml::{events::Event, Reader};
 
-use std::{collections::HashSet, iter::FromIterator};
-
 use oss_sdk::{OSSClient, SignAndDispatch};
 
-use super::*;
+use crate::{
+    errors::Error, types, AwosApi, GetAsBufferResp, ListDetailsResp, ListOptions, ObjectDetails,
+    PutOrCopyOptions, Result, SignUrlOptions,
+};
 
 impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
-    fn list_object<'a, O, R>(&self, opts: O) -> Result<R>
+    fn list_object<'a, O>(&self, opts: O) -> Result<Vec<String>>
     where
         O: Into<Option<ListOptions<'a>>>,
-        R: FromIterator<String>,
     {
         self.list_details(opts).map(|resp| resp.to_obj_names())
     }
@@ -103,10 +103,9 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
     where
         S: AsRef<str>,
     {
-        todo!();
-        // let mut resp = self.get_as_buffer(key, None)?;
-        // resp.headers.extend(resp.meta.into_iter());
-        // Ok(resp.headers)
+        let mut resp = self.get_as_buffer::<_, _, Vec<_>>(key, None)?;
+        resp.headers.extend(resp.meta.into_iter());
+        Ok(resp.headers)
     }
 
     fn put<'a, S, D, O>(&self, key: S, data: D, opts: O) -> Result<()>
@@ -184,12 +183,4 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
         let method = opts.method;
         Ok(self.get_signed_url(key.as_ref(), method, expires, "", None))
     }
-}
-
-fn resp_to_error(resp: &HttpResponse) -> String {
-    format!(
-        "SatusCode:{}\nContent:{}",
-        resp.status,
-        std::str::from_utf8(&resp.body.to_vec()).unwrap_or("Cannot stringify the content")
-    )
 }
