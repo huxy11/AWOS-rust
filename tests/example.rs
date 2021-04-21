@@ -1,6 +1,8 @@
-use awos_rust::{AwosApi, AwosClient, PutOrCopyOptions, SignUrlOptions};
+use awos_rust::{AwosApi, AwosClient, PutOrCopyOptions, SignedUrlOptions};
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+// use std::error::Error as StdError;
 
 const FILE_NAME: &str = "rust_oss_sdk_test";
 
@@ -22,7 +24,9 @@ fn awos_with_oss_test() {
 
     /* Put Object */
     let buf = BUF.to_owned().into_boxed_slice();
-    let opts = PutOrCopyOptions::new(vec![("test-key", "test-val")], None, None, None, None);
+    let mut meta = HashMap::new();
+    meta.insert("test-key".to_owned(), "test-val".to_owned());
+    let opts = PutOrCopyOptions::new(meta, None, None, None, None);
     let resp = awos_instance.put(FILE_NAME, buf, opts);
     assert!(resp.is_ok());
 
@@ -78,7 +82,7 @@ fn awos_with_oss_test() {
     /* 获取 Sign_Url */
     let url = awos_instance.sign_url("A", None);
     println!("{:?}", url);
-    let opts = SignUrlOptions::new("PUT", None);
+    let opts = SignedUrlOptions::new("PUT", None);
     let url = awos_instance.sign_url("A", opts);
     println!("{:?}", url);
 
@@ -94,9 +98,10 @@ fn awos_with_oss_test() {
     let resp = awos_instance.get::<_, _, Vec<_>>(FILE_NAME, None);
     assert!(resp.is_err());
     let resp_err = resp.unwrap_err();
-    assert!(resp_err.is_not_found()); //should be 404NotFound
-    assert!(!resp_err.is_forbidden()); //other than
-    assert!(!resp_err.is_bad_request());
+    println!("{:#?}", resp_err);
+    // assert!(resp_err.is_not_found()); //should be 404NotFound
+    // assert!(!resp_err.is_forbidden()); //other than
+    // assert!(!resp_err.is_bad_request());
 }
 
 #[test]
@@ -111,7 +116,9 @@ fn awos_with_s3_test() {
 
     /* Put Object */
     let buf = BUF.to_owned().into_boxed_slice();
-    let opts = PutOrCopyOptions::new(vec![("test-key", "test-val")], None, None, None, None);
+    let mut meta = HashMap::new();
+    meta.insert("test-key".to_owned(), "test-val".to_owned());
+    let opts = PutOrCopyOptions::new(meta, None, None, None, None);
     let resp = awos_instance.put(FILE_NAME, buf, opts);
     assert!(resp.is_ok());
 
@@ -151,13 +158,14 @@ fn awos_with_s3_test() {
     /* 获取 Sign_Url */
     let url = awos_instance.sign_url(FILE_NAME, None);
     println!("{:?}", url);
-    let opts = SignUrlOptions::new("PUT", None);
+    let opts = SignedUrlOptions::new("PUT", None);
     let url = awos_instance.sign_url(FILE_NAME, opts);
     println!("{:?}", url);
 
     /* Head */
     let resp = awos_instance.head(FILE_NAME);
     assert!(resp.is_ok());
+    println!("{:#?}", resp);
     // assert!(resp.is_ok() && resp.unwrap().contains_key("test-key"));
 
     /* Del */
@@ -167,4 +175,15 @@ fn awos_with_s3_test() {
     /* Check if Del works */
     let resp = awos_instance.get::<_, _, Vec<_>>(FILE_NAME, None);
     assert!(resp.is_err());
+    // assert!(resp.unwrap_err().source().unwrap());
+
+    /* 403 */
+    let bucket = std::env::var("S3_BUCKET").unwrap_or("s3-test-bucket".to_owned());
+    let endpoint = std::env::var("S3_ENDPOINT").unwrap_or("http://127.0.0.1:9000".to_owned());
+    let access_key_id = std::env::var("S3_KEY_ID").unwrap_or("minioadmin".to_owned());
+    let access_key_secret = std::env::var("S3_KEY_SECRET").unwrap_or("minio".to_owned());
+    let awos_instance =  AwosClient::new_with_s3(endpoint, bucket, access_key_id, access_key_secret).unwrap();
+
+    let ret = awos_instance.get::<_,_,Vec<_>>(FILE_NAME, None);
+    println!("{:#?}", ret);
 }

@@ -6,6 +6,7 @@ mod aws;
 mod errors;
 mod inner_client;
 mod oss;
+mod prelude;
 mod types;
 
 use errors::*;

@@ -3,8 +3,9 @@ use quick_xml::{events::Event, Reader};
 use oss_sdk::{OSSClient, SignAndDispatch};
 
 use crate::{
-    errors::Error, types, AwosApi, GetAsBufferResp, ListDetailsResp, ListOptions, ObjectDetails,
-    PutOrCopyOptions, Result, SignUrlOptions,
+    errors::{Error, ParseError},
+    types, AwosApi, GetAsBufferResp, ListDetailsResp, ListOptions, ObjectDetails, PutOrCopyOptions,
+    Result, SignedUrlOptions,
 };
 
 impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
@@ -43,8 +44,14 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
                         b"ETag" => cur_obj.e_tag = reader.read_text(e.name(), &mut Vec::new())?,
                         b"Size" => cur_obj.size = reader.read_text(e.name(), &mut Vec::new())?,
                         b"IsTruncated" => {
-                            result.is_truncated =
-                                reader.read_text(e.name(), &mut Vec::new())?.parse()?
+                            result.is_truncated = reader
+                                .read_text(e.name(), &mut Vec::new())?
+                                .parse()
+                                .map_err(|_| {
+                                    Error::Parse(ParseError::InvalidFormat {
+                                        msg: format!("Failed parsing content IsTruncated to bool"),
+                                    })
+                                })?
                         }
                         b"NextContinuationToken" => {
                             result.next_marker = reader.read_text(e.name(), &mut Vec::new())?
@@ -68,7 +75,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
             }
             Ok(result)
         } else {
-            Err(Error::Http(resp.status.as_u16().into()))
+            Err(resp.status.as_u16().into())
         }
     }
     fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<types::GetResp>
@@ -96,7 +103,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
             }
             Ok(get_resp)
         } else {
-            Err(Error::Http(resp.status.as_u16().into()))
+            Err(resp.status.as_u16().into())
         }
     }
     fn head<S>(&self, key: S) -> Result<std::collections::HashMap<String, String>>
@@ -116,14 +123,14 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
     {
         let mut rqst = self.put_request(key.as_ref(), data.into());
         if let Some(_opts) = opts.into() {
-            rqst.add_headers(_opts.to_headers());
-            rqst.add_meta(_opts.meta.into_iter().map(|item| item.to_owned()));
+            rqst.add_headers(_opts.as_headers());
+            rqst.add_meta(_opts.meta.unwrap_or_default());
         }
         let resp = self.sign_and_dispatch(rqst)?;
         if resp.status.is_success() {
             Ok(())
         } else {
-            Err(Error::Http(resp.status.as_u16().into()))
+            Err(resp.status.as_u16().into())
         }
     }
 
@@ -135,16 +142,17 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
     {
         let mut rqst = self.put_request(key.as_ref(), None);
         if let Some(_opts) = opts.into() {
-            let mut headers = _opts.to_headers();
-            headers.push(("x-oss-copy-source".to_owned(), src.into()));
+            let mut headers = _opts.as_headers();
+            let src = src.into();
+            headers.insert("x-oss-copy-source", &src);
             rqst.add_headers(headers);
-            rqst.add_meta(_opts.meta.into_iter().map(|item| item.to_owned()));
+            rqst.add_meta(_opts.meta.unwrap_or_default());
         }
         let resp = self.sign_and_dispatch(rqst)?;
         if resp.status.is_success() {
             Ok(())
         } else {
-            Err(Error::Http(resp.status.as_u16().into()))
+            Err(resp.status.as_u16().into())
         }
     }
 
@@ -157,7 +165,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
         if resp.status.is_success() {
             Ok(())
         } else {
-            Err(Error::Http(resp.status.as_u16().into()))
+            Err(resp.status.as_u16().into())
         }
     }
 
@@ -176,11 +184,11 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
     fn sign_url<'a, S, O>(&self, key: S, opts: O) -> Result<String>
     where
         S: AsRef<str>,
-        O: Into<Option<SignUrlOptions<'a>>>,
+        O: Into<Option<SignedUrlOptions<'a>>>,
     {
         let opts = opts.into().unwrap_or_default();
-        let expires = opts.expires;
-        let method = opts.method;
+        let expires = opts.expires.unwrap_or(3600);
+        let method = opts.method.unwrap_or("GET");
         Ok(self.get_signed_url(key.as_ref(), method, expires, "", None))
     }
 }

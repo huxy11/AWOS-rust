@@ -58,7 +58,7 @@ pub trait AwosApi {
     fn sign_url<'a, S, O>(&self, key: S, opts: O) -> Result<String>
     where
         S: AsRef<str>,
-        O: Into<Option<SignUrlOptions<'a>>>;
+        O: Into<Option<SignedUrlOptions<'a>>>;
 }
 
 pub struct AwosClient {
@@ -201,7 +201,7 @@ impl AwosApi for AwosClient {
     fn sign_url<'a, S, O>(&self, key: S, opts: O) -> Result<String>
     where
         S: AsRef<str>,
-        O: Into<Option<SignUrlOptions<'a>>>,
+        O: Into<Option<SignedUrlOptions<'a>>>,
     {
         self.inner.sign_url(key, opts)
     }

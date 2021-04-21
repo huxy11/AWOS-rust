@@ -5,7 +5,6 @@ use std::{
     io::Read,
     iter::FromIterator,
     pin::Pin,
-    time::SystemTime,
 };
 
 use oss_sdk::{HttpResponse, OSS_PREFIX};
@@ -32,8 +31,8 @@ pub struct GetAsBufferResp {
 /// next_marker:    返回的 Next_marker Header 项，用于连续请求。
 #[derive(Clone, Debug, Default)]
 pub struct ListDetailsResp {
-    pub is_truncated: bool,
     pub objects: Vec<ObjectDetails>,
+    pub is_truncated: bool,
     pub prefix: String,
     pub next_marker: String,
 }
@@ -75,14 +74,50 @@ impl From<HttpResponse> for GetAsBufferResp {
         }
     }
 }
+
+macro_rules! take_headers {
+    ($headers:ident, $resp:ident, $($item:ident),+) => {
+        $(
+            if let Some(_item) = $resp.$item.take() {
+                $headers.insert(stringify!($item).replace("_", "_"), _item.to_string());
+            }
+        )+
+    };
+}
 impl From<GetObjectOutput> for GetAsBufferResp {
     fn from(mut resp: GetObjectOutput) -> Self {
         let mut buf = Vec::new();
         let meta = resp.metadata.take().unwrap_or_default();
         let mut headers = HashMap::new();
-        if let Some(_cache_control) = resp.cache_control.take() {
-            headers.insert("cache-control".to_owned(), _cache_control);
-        }
+        take_headers!(
+            headers,
+            resp,
+            accept_ranges,
+            cache_control,
+            bucket_key_enabled,
+            content_length,
+            content_disposition,
+            content_encoding,
+            content_language,
+            content_type,
+            delete_marker,
+            e_tag,
+            expiration,
+            expires,
+            last_modified,
+            object_lock_legal_hold_status,
+            object_lock_mode,
+            object_lock_retain_until_date,
+            replication_status,
+            request_charged,
+            restore,
+            sse_customer_algorithm,
+            sse_customer_key_md5,
+            ssekms_key_id,
+            server_side_encryption,
+            storage_class
+        );
+
         if let Some(_body) = resp.body.take() {
             //TODO Async
             _body.into_blocking_read().read_to_end(&mut buf).ok();
@@ -156,23 +191,24 @@ impl ListDetailsResp {
 
 /// 上传/复制 Object 方法的可选参数
 /// 不为空时，会在请求中添加对映的 Header
+#[derive(Debug, Default)]
 pub struct PutOrCopyOptions<'a> {
-    pub meta: Vec<(&'a str, &'a str)>,
-    pub content_type: &'a str,
-    pub cache_control: &'a str,
-    pub content_disposition: &'a str,
-    pub content_encoding: &'a str,
+    pub meta: Option<HashMap<String, String>>,
+    pub content_type: Option<&'a str>,
+    pub cache_control: Option<&'a str>,
+    pub content_disposition: Option<&'a str>,
+    pub content_encoding: Option<&'a str>,
 }
 
 impl<'a> PutOrCopyOptions<'a> {
     /// 上传/复制方法可选参参数的构建, 其生命周期与传入 String Literal 中最短者一致。
-    /// meta, 键置对的集合，
+    /// meta, 键置对的HashMap，
     ///
     /// #Example
     /// ```
     /// let put_opts = awos_rust::PutOrCopyOptions::new(vec![("test-key", "test-val")], "content-type-unknown", None, None, None);
     /// ```
-    pub fn new<M, KV, S1, S2, S3, S4>(
+    pub fn new<M, S1, S2, S3, S4>(
         meta: M,
         content_type: S1,
         cache_control: S2,
@@ -180,43 +216,42 @@ impl<'a> PutOrCopyOptions<'a> {
         content_encoding: S4,
     ) -> Self
     where
-        M: Into<Option<KV>>,
-        KV: Default + IntoIterator<Item = (&'a str, &'a str)>,
+        M: Into<Option<HashMap<String, String>>>,
         S1: Into<Option<&'a str>>,
         S2: Into<Option<&'a str>>,
         S3: Into<Option<&'a str>>,
         S4: Into<Option<&'a str>>,
     {
         Self {
-            meta: meta.into().unwrap_or_default().into_iter().collect(),
-            cache_control: cache_control.into().unwrap_or_default(),
-            content_type: content_type.into().unwrap_or_default(),
-            content_disposition: content_disposition.into().unwrap_or_default(),
-            content_encoding: content_encoding.into().unwrap_or_default(),
+            meta: meta.into(),
+            cache_control: cache_control.into(),
+            content_type: content_type.into(),
+            content_disposition: content_disposition.into(),
+            content_encoding: content_encoding.into(),
         }
     }
 
-    pub(crate) fn to_headers(&self) -> Vec<(String, String)> {
-        let mut headers_vec = Vec::with_capacity(4);
-        let mut add_headers = |k: &str, v: &str| {
-            if !v.is_empty() {
-                headers_vec.push((k.to_owned(), v.to_owned()));
+    pub(crate) fn as_headers(&self) -> HashMap<&str, &str> {
+        let mut headers = HashMap::with_capacity(4);
+        let mut add_headers = |k, v| {
+            if let Some(_v) = v {
+                headers.insert(k, _v);
             }
         };
         add_headers("cache_control", self.content_type);
         add_headers("content_type", self.content_type);
         add_headers("content_disposition", self.content_type);
         add_headers("content_encoding", self.content_type);
-        headers_vec
+        headers
     }
 }
 /// List 相关操作的可选参数
 /// 生命周期与传入的 String Literal References 中最短的一致
 pub struct ListOptions<'a> {
-    pub prefix: &'a str,
-    pub marker: &'a str,
-    pub delimiter: &'a str,
-    pub max_keys: usize,
+    pub prefix: Option<&'a str>,
+    pub marker: Option<&'a str>,
+    pub delimiter: Option<&'a str>,
+    pub max_keys: Option<usize>,
 }
 impl<'a> ListOptions<'a> {
     /// ListOptions 构造
@@ -235,42 +270,46 @@ impl<'a> ListOptions<'a> {
         N: Into<Option<usize>>,
     {
         Self {
-            prefix: prefix.into().unwrap_or_default(),
-            marker: marker.into().unwrap_or_default(),
-            delimiter: delimiter.into().unwrap_or_default(),
-            max_keys: max_keys.into().unwrap_or(1000),
+            prefix: prefix.into(),
+            marker: marker.into(),
+            delimiter: delimiter.into(),
+            max_keys: max_keys.into(),
         }
     }
     pub(crate) fn to_params(&self) -> Vec<(String, Option<String>)> {
         let mut params_vec = Vec::with_capacity(4);
-        let mut add_params = |k: &str, v: &str| {
-            if !v.is_empty() {
-                params_vec.push((k.to_owned(), Some(v.to_owned())));
+        let mut add_params = |k: &str, v: Option<&str>| {
+            if let Some(_v) = v {
+                params_vec.push((k.to_owned(), Some(_v.to_owned())));
             }
         };
         add_params("prefix", self.prefix);
         add_params("marker", self.marker);
         add_params("delimiter", self.delimiter);
-        params_vec.push(("max_keys".to_owned(), Some(self.max_keys.to_string())));
+        params_vec.push((
+            "max_keys".to_owned(),
+            Some(self.max_keys.unwrap_or(1000).to_string()),
+        ));
         params_vec
     }
 }
 
-/// 构建 Signed Url 需要的参数
-pub struct SignUrlOptions<'a> {
-    pub method: &'a str,
-    pub expires: u64,
+/// 构建 Signed Url 的可选参数
+/// method: 默认为 "GET"
+/// expire: 默认为当前时间 + 3600s
+#[derive(Debug, Default)]
+pub struct SignedUrlOptions<'a> {
+    pub method: Option<&'a str>,
+    pub expires: Option<u64>,
 }
 
-impl<'a> SignUrlOptions<'a> {
-    /// SignUrlOptions 构建
+impl<'a> SignedUrlOptions<'a> {
+    /// SignedUrlOptions 构建
     /// 两个参数均为可选，传入 None 会使用默认值。
-    /// method: 默认为 "GET"
-    /// expire: 默认为当前时间 + 3600s
     ///
     /// #Example
     /// ```
-    /// let sign_url_opts = awos_rust::SignUrlOptions::new("Put", None);
+    /// let signed_url_opts = awos_rust::SignedUrlOptions::new("Put", None);
     ///
     pub fn new<M, E>(method: M, expires: E) -> Self
     where
@@ -278,27 +317,8 @@ impl<'a> SignUrlOptions<'a> {
         E: Into<Option<u64>>,
     {
         Self {
-            method: method.into().unwrap_or("GET"),
-            expires: expires.into().unwrap_or(
-                SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .expect("Time went backwards.")
-                    .as_secs()
-                    + 3600,
-            ),
-        }
-    }
-}
-
-impl<'a> Default for SignUrlOptions<'a> {
-    fn default() -> Self {
-        Self {
-            method: "GET",
-            expires: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("Time went back wards")
-                .as_secs()
-                + 3600,
+            method: method.into(),
+            expires: expires.into(),
         }
     }
 }

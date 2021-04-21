@@ -1,8 +1,8 @@
 mod awos_errors;
-mod http_errors;
+// mod http_errors;
 
 pub use awos_errors::Error;
-pub(crate) use awos_errors::S3Error;
-pub use http_errors::HttpError;
-
+pub use awos_errors::ParseError;
 pub type Result<T> = std::result::Result<T, Error>;
+
+pub(crate) use std::io::Error as IoError;
