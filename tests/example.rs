@@ -37,7 +37,7 @@ fn awos_with_oss_test() {
         .as_ref()
         .unwrap()
         .meta
-        .contains_key("x-oss-meta-test-key"));
+        .contains_key("test-key"));
     let resp_content = std::pin::Pin::into_inner(resp.unwrap().content);
     assert_eq!(*BUF, *resp_content);
 
@@ -48,7 +48,7 @@ fn awos_with_oss_test() {
         .as_ref()
         .unwrap()
         .meta
-        .contains_key("x-oss-meta-test-key"));
+        .contains_key("test-key"));
     let resp_content = std::pin::Pin::into_inner(resp.unwrap().content);
     assert_eq!(*BUF, *resp_content);
 
@@ -61,7 +61,7 @@ fn awos_with_oss_test() {
         .as_ref()
         .unwrap()
         .meta
-        .contains_key("x-oss-meta-test-key"));
+        .contains_key("test-key"));
     let resp_content = std::pin::Pin::into_inner(resp.unwrap().content);
     assert_eq!(*BUF, *resp_content);
 
@@ -88,7 +88,7 @@ fn awos_with_oss_test() {
 
     /* Head */
     let resp = awos_instance.head(FILE_NAME);
-    assert!(resp.is_ok() && resp.unwrap().contains_key("x-oss-meta-test-key"));
+    assert!(resp.is_ok() && resp.unwrap().contains_key("test-key"));
 
     /* Del */
     let resp = awos_instance.del(FILE_NAME);

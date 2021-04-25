@@ -55,8 +55,8 @@ impl From<HttpResponse> for GetAsBufferResp {
             if let Some(_name) = k {
                 if _name.as_str().starts_with(OSS_PREFIX) {
                     meta.insert(
-                        // _name.as_str().trim_start_matches(OSS_PREFIX).to_owned(),
-                        _name.as_str().to_owned(),
+                        _name.as_str().trim_start_matches(OSS_PREFIX).to_owned(),
+                        // _name.as_str().to_owned(),
                         v.to_str().unwrap_or("Has invisible Ascii chars").to_owned(),
                     );
                 } else {
