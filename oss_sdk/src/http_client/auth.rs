@@ -73,7 +73,7 @@ impl<'a> SignedRequest<'a> {
             .map(|val| val.as_str())
             .unwrap_or_default();
         let content_type = headers
-            .get("content_type")
+            .get("content-type")
             .map(|val| val.as_str())
             .unwrap_or_default();
 
