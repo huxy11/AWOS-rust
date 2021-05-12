@@ -19,7 +19,7 @@ oss_sdk = {path = "./oss_sdk", package = "oss_sdk", optional = true}
 
 bytes = "1.0"
 
-reqwest = { version = "0.11.3", features = ["blocking"] }
+reqwest = { version = "0.11.3"}
 
 quick-xml = "0.22"
 
@@ -29,3 +29,7 @@ rusoto_credential = {version = "0.46.0"}
 rusoto_signature = {version ="0.46.0"}
 
 tokio = "1.5"
+
+async-trait = "0.1"
+
+# serialize_to_maps = {path = "../serialize_to_headers"}

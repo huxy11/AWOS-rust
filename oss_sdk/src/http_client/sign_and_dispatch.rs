@@ -1,23 +1,29 @@
-use std::str::FromStr;
+use std::{ str::FromStr};
 
 use reqwest::{header::HeaderName, Method};
 
 use super::{errors::DispatchError, responses::HttpResponse, SignedRequest};
 
+use async_trait::async_trait;
+
+#[async_trait]
 pub trait SignAndDispatch {
-    fn sign_and_dispatch(
+    async fn sign_and_dispatch(
         &self,
-        request: SignedRequest,
+        mut request: SignedRequest,
         // timeout: Option<Duration>,
     ) -> Result<HttpResponse, DispatchError>;
+    // ) -> Pin<Box<dyn Future<Output = Result<HttpResponse, DispatchError>> + Send>>;
 }
 
-impl SignAndDispatch for reqwest::blocking::Client {
-    fn sign_and_dispatch(
+#[async_trait]
+impl SignAndDispatch for reqwest::Client {
+    async fn sign_and_dispatch(
         &self,
         mut request: SignedRequest,
         // timeout: Option<Duration>,
     ) -> Result<HttpResponse, DispatchError> {
+        // ) -> Pin<Box<dyn Future<Output = Result<HttpResponse, DispatchError>> + Send>> {
         request.oss_sign();
         let url = request.generate_url();
         let mut headers = reqwest::header::HeaderMap::new();
@@ -32,16 +38,24 @@ impl SignAndDispatch for reqwest::blocking::Client {
         if let Some(_payload) = request.payload {
             request_builder = request_builder.body(_payload.into_vec());
         }
-        Ok(HttpResponse::from(request_builder.send()?))
+        let ret = request_builder.send();
+        let http_resp = HttpResponse::from_resp(ret.await?).await;
+        Ok(http_resp)
     }
 }
 
-impl From<reqwest::blocking::Response> for HttpResponse {
-    fn from(resp: reqwest::blocking::Response) -> Self {
-        Self {
-            status: resp.status(),
-            headers: resp.headers().to_owned(),
-            body: Box::pin(resp.bytes().unwrap_or_default()),
-        }
-    }
-}
+// impl From<reqwest::Response> for HttpResponse {
+//     fn from(resp: reqwest::Response) -> Self {
+//         let status = resp.status();
+//         let headers = resp.headers().to_owned();
+//         // let bytes = rt.block_on(resp.bytes()).unwrap_or_default();
+//         // let bytes = Byt;
+//         resp.bytes()
+
+//         Self {
+//             status,
+//             headers,
+//             body: Box::pin(bytes),
+//         }
+//     }
+// }

@@ -60,7 +60,7 @@ const RESOURCES: [&str; 51] = [
     "continuation-token",
 ];
 
-impl<'a> SignedRequest<'a> {
+impl SignedRequest{
     pub(crate) fn oss_sign(&mut self) {
         self.add_header("date", Utc::now().format("%a, %d %b %Y %T GMT").to_string());
         let auth_header = self.authorization_header();

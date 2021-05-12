@@ -1,112 +1,126 @@
+use std::collections::HashMap;
+
+use crate::{aws::S3Client, errors::Result, types, GetAsBufferResp, PutOrCopyOptions};
+use async_trait::async_trait;
 use oss_sdk::OssClient;
 
-use crate::{aws::S3Client, AwosApi};
+use crate::{AwosApi, ListDetailsResp, ListOptions};
 
 pub(crate) enum InnerClient {
     AWS(S3Client),
     OSS(OssClient),
 }
+
+#[async_trait]
 impl AwosApi for InnerClient {
-    fn list_object<'a, O>(&self, opts: O) -> crate::errors::Result<Vec<String>>
+    async fn list_object<'a, O>(&self, opts: O) -> crate::errors::Result<Vec<String>>
     where
-        O: Into<Option<crate::ListOptions<'a>>>,
+        O: Into<Option<crate::ListOptions<'a>>> + Send,
     {
         match self {
-            InnerClient::AWS(_s3_client) => _s3_client.list_object(opts),
-            InnerClient::OSS(_oss_client) => _oss_client.list_object(opts),
+            InnerClient::AWS(_s3_client) => _s3_client.list_object(opts).await,
+            InnerClient::OSS(_oss_client) => _oss_client.list_object(opts).await,
+            // _ => unimplemented!(),
         }
     }
 
-    fn list_details<'a, O>(&self, opts: O) -> crate::errors::Result<crate::ListDetailsResp>
+    async fn list_details<'a, O>(&self, opts: O) -> Result<ListDetailsResp>
     where
-        O: Into<Option<crate::ListOptions<'a>>>,
+        O: Into<Option<ListOptions<'a>>> + Send,
     {
         match self {
-            InnerClient::AWS(_s3_client) => _s3_client.list_details(opts),
-            InnerClient::OSS(_oss_client) => _oss_client.list_details(opts),
+            InnerClient::AWS(_s3_client) => _s3_client.list_details(opts).await,
+            InnerClient::OSS(_oss_client) => _oss_client.list_details(opts).await,
+            // _ => unimplemented!(),
         }
     }
 
-    fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> crate::errors::Result<crate::GetResp>
+    async fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<types::GetResp>
     where
-        S: AsRef<str>,
-        M: Into<Option<F>>,
-        F: IntoIterator<Item = &'a str>,
+        S: AsRef<str> + Send,
+        M: Into<Option<F>> + Send,
+        F: IntoIterator<Item = &'a str> + Send,
     {
         match self {
-            InnerClient::AWS(_s3_client) => _s3_client.get(key, meta_keys_filter),
-            InnerClient::OSS(_oss_client) => _oss_client.get(key, meta_keys_filter),
+            InnerClient::AWS(_s3_client) => _s3_client.get(key, meta_keys_filter).await,
+            InnerClient::OSS(_oss_client) => _oss_client.get(key, meta_keys_filter).await,
+            // _ => unimplemented!(),
         }
     }
 
-    fn get_as_buffer<'a, S, M, F>(
+    async fn get_as_buffer<'a, S, M, F>(
         &self,
         key: S,
         meta_keys_filter: M,
-    ) -> crate::errors::Result<crate::GetAsBufferResp>
+    ) -> Result<GetAsBufferResp>
     where
-        S: AsRef<str>,
-        M: Into<Option<F>>,
-        F: IntoIterator<Item = &'a str>,
+        S: AsRef<str> + Send,
+        M: Into<Option<F>> + Send,
+        F: IntoIterator<Item = &'a str> + Send,
     {
         match self {
-            InnerClient::AWS(_s3_client) => _s3_client.get_as_buffer(key, meta_keys_filter),
-            InnerClient::OSS(_oss_client) => _oss_client.get_as_buffer(key, meta_keys_filter),
+            InnerClient::AWS(_s3_client) => _s3_client.get_as_buffer(key, meta_keys_filter).await,
+            InnerClient::OSS(_oss_client) => _oss_client.get_as_buffer(key, meta_keys_filter).await,
+            // _ => unimplemented!(),
         }
     }
 
-    fn head<S>(&self, key: S) -> crate::errors::Result<std::collections::HashMap<String, String>>
+    async fn head<S>(&self, key: S) -> Result<HashMap<String, String>>
     where
-        S: AsRef<str>,
+        S: AsRef<str> + Send,
     {
         match self {
-            InnerClient::AWS(_s3_client) => _s3_client.head(key),
-            InnerClient::OSS(_oss_client) => _oss_client.head(key),
+            InnerClient::AWS(_s3_client) => _s3_client.head(key).await,
+            InnerClient::OSS(_oss_client) => _oss_client.head(key).await,
+            // _ => unimplemented!(),
         }
     }
 
-    fn put<'a, S, D, O>(&self, key: S, data: D, opts: O) -> crate::errors::Result<()>
+    async fn put<'a, S, D, O>(&self, key: S, data: D, opts: O) -> Result<()>
     where
-        S: AsRef<str>,
-        D: Into<Box<[u8]>>,
-        O: Into<Option<crate::PutOrCopyOptions<'a>>>,
+        S: AsRef<str> + Send,
+        D: Into<Box<[u8]>> + Send,
+        O: Into<Option<PutOrCopyOptions<'a>>> + Send,
     {
         match self {
-            InnerClient::AWS(_s3_client) => _s3_client.put(key, data, opts),
-            InnerClient::OSS(_oss_client) => _oss_client.put(key, data, opts),
+            InnerClient::AWS(_s3_client) => _s3_client.put(key, data, opts).await,
+            InnerClient::OSS(_oss_client) => _oss_client.put(key, data, opts).await,
+            // _ => unimplemented!(),
         }
     }
 
-    fn copy<'a, S1, S2, O>(&self, src: S1, key: S2, opts: O) -> crate::errors::Result<()>
+    async fn copy<'a, S1, S2, O>(&self, src: S1, key: S2, opts: O) -> Result<()>
     where
-        S1: Into<String>,
-        S2: AsRef<str>,
-        O: Into<Option<crate::PutOrCopyOptions<'a>>>,
+        S1: Into<String> + Send,
+        S2: AsRef<str> + Send,
+        O: Into<Option<PutOrCopyOptions<'a>>> + Send,
     {
         match self {
-            InnerClient::AWS(_s3_client) => _s3_client.copy(src, key, opts),
-            InnerClient::OSS(_oss_client) => _oss_client.copy(src, key, opts),
+            InnerClient::AWS(_s3_client) => _s3_client.copy(src, key, opts).await,
+            InnerClient::OSS(_oss_client) => _oss_client.copy(src, key, opts).await,
+            // _ => unimplemented!(),
         }
     }
 
-    fn del<S>(&self, key: S) -> crate::errors::Result<()>
+    async fn del<S>(&self, key: S) -> Result<()>
     where
-        S: AsRef<str>,
+        S: AsRef<str> + Send,
     {
         match self {
-            InnerClient::AWS(_s3_client) => _s3_client.del(key),
-            InnerClient::OSS(_oss_client) => _oss_client.del(key),
+            InnerClient::AWS(_s3_client) => _s3_client.del(key).await,
+            InnerClient::OSS(_oss_client) => _oss_client.del(key).await,
+            // _ => unimplemented!(),
         }
     }
 
-    fn del_multi<K, S>(&self, keys: K) -> crate::errors::Result<()>
+    async fn del_multi<S>(&self, keys: &[S]) -> Result<()>
     where
-        S: AsRef<str>,
-        K: Default + IntoIterator<Item = S>,
+        S: AsRef<str> + Sync,
     {
         match self {
-            InnerClient::AWS(_s3_client) => _s3_client.del_multi(keys),
-            InnerClient::OSS(_oss_client) => _oss_client.del_multi(keys),
+            InnerClient::AWS(_s3_client) => _s3_client.del_multi(keys).await,
+            InnerClient::OSS(_oss_client) => _oss_client.del_multi(keys).await,
+            // _ => unimplemented!(),
         }
     }
 
@@ -118,6 +132,7 @@ impl AwosApi for InnerClient {
         match self {
             InnerClient::AWS(_s3_client) => _s3_client.sign_url(key, opts),
             InnerClient::OSS(_oss_client) => _oss_client.sign_url(key, opts),
+            // _ => unimplemented!(),
         }
     }
 }

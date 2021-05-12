@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Clone, Debug, Default)]
-pub struct SignedRequest<'a> {
+pub struct SignedRequest {
     pub method: &'static str,
     pub region: Region,
     pub bucket: String,
@@ -9,30 +9,32 @@ pub struct SignedRequest<'a> {
     pub headers: Headers,
     pub params: Params,
     pub payload: Option<Box<[u8]>>,
-    pub access_key_id: &'a str,
-    pub access_key_secret: &'a str,
+    pub access_key_id: String,
+    pub access_key_secret: String,
     pub url: String,
     schema: Schema,
 }
-impl<'a> SignedRequest<'a> {
-    pub fn new<S1, S2>(
+impl SignedRequest {
+    pub fn new<S1, S2, S3, S4>(
         method: &'static str,
         region: &Region,
         bucket: S1,
         object: S2,
-        access_key_id: &'a str,
-        access_key_secret: &'a str,
+        access_key_id: S3,
+        access_key_secret: S4,
         schema: Schema,
     ) -> Self
     where
         S1: Into<String>,
         S2: Into<String>,
+        S3: Into<String>,
+        S4: Into<String>,
     {
         Self {
             method,
             region: region.clone(),
-            access_key_id,
-            access_key_secret,
+            access_key_id: access_key_id.into(),
+            access_key_secret: access_key_secret.into(),
             bucket: bucket.into(),
             object: object.into(),
             schema,

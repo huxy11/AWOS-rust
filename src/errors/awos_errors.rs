@@ -21,20 +21,22 @@ pub enum Error {
     Internal { msg: String },
 }
 
+impl Error {
+    /// Returns None if self is NOT an IO Error
+    pub fn io_kind(&self) -> Option<ErrorKind> {
+        if let Error::Io(_io_error) = self {
+            Some(_io_error.kind())
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Display)]
 pub enum ParseError {
     UTF8(Utf8Error),
     InvalidFormat { msg: String },
 }
-
-/* From trait Implements*/
-// impl From<RusotoError::Blocking> for Error {
-//     fn from(_: RusotoError::Blocking) -> Self {
-//         Error::Internal {
-//             msg: "attempting to run a future as blocking".to_string(),
-//         }
-//     }
-//
 
 fn to_error<E>(e: RusotoError<E>) -> Error {
     match e {

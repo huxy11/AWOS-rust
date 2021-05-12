@@ -24,3 +24,15 @@ impl std::fmt::Debug for HttpResponse {
             .finish()
     }
 }
+impl HttpResponse {
+    pub(crate) async  fn from_resp(resp: reqwest::Response) -> Self {
+        let status = resp.status();
+        let headers = resp.headers().to_owned();
+        let bytes = resp.bytes().await.unwrap();
+        Self {
+            status,
+            headers,
+            body: Box::pin(bytes),
+        }
+    }
+}

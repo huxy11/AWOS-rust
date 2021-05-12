@@ -15,7 +15,7 @@ const CONTENT_TYPE: &str = "content-type";
 const CONTENT_MD5: &str = "Content-MD5";
 
 #[derive(Debug)]
-pub struct OSSClient<C: SignAndDispatch> {
+pub struct OSSClient<C: SignAndDispatch + Send + Sync> {
     pub client: C,
     pub region: Region,
     access_key_id: String,
@@ -24,7 +24,7 @@ pub struct OSSClient<C: SignAndDispatch> {
     schema: Schema,
 }
 
-impl<C: SignAndDispatch> OSSClient<C> {
+impl<C: SignAndDispatch + Send + Sync> OSSClient<C> {
     pub fn new<'a, R, S, B, S1, S2>(
         client: C,
         region: R,
@@ -80,8 +80,11 @@ impl<C: SignAndDispatch> OSSClient<C> {
     {
         self.generate_request("DELETE", object, None)
     }
-    pub fn sign_and_dispatch(&self, request: SignedRequest) -> Result<HttpResponse, OSSError> {
-        self.client.sign_and_dispatch(request)
+    pub async fn sign_and_dispatch(
+        &self,
+        request: SignedRequest,
+    ) -> Result<HttpResponse, OSSError> {
+        self.client.sign_and_dispatch(request).await
     }
     pub fn get_signed_url<'a, H>(
         &self,
@@ -166,7 +169,7 @@ impl<C: SignAndDispatch> OSSClient<C> {
     }
 }
 
-impl<'a> SignedRequest<'a> {
+impl SignedRequest {
     fn _add_meta<K, V>(&mut self, key: K, value: V)
     where
         K: Into<String>,
@@ -202,7 +205,7 @@ mod tests {
         let access_key_id = std::env::var("OSS_KEY_ID").unwrap();
         let access_key_secret = std::env::var("OSS_KEY_SECRET").unwrap();
         let oss_instance = OSSClient::new(
-            reqwest::blocking::Client::new(),
+            reqwest::Client::new(),
             "北京",
             None,
             bucket.as_ref(),

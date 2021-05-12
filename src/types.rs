@@ -1,8 +1,8 @@
 use bytes::Bytes;
 use rusoto_s3::{GetObjectOutput, ListObjectsOutput};
+use tokio::io::AsyncReadExt;
 use std::{
     collections::{HashMap, HashSet},
-    io::Read,
     iter::FromIterator,
     pin::Pin,
 };
@@ -84,8 +84,8 @@ macro_rules! take_headers {
         )+
     };
 }
-impl From<GetObjectOutput> for GetAsBufferResp {
-    fn from(mut resp: GetObjectOutput) -> Self {
+impl  GetAsBufferResp {
+    pub(crate) async fn from_get_output(mut resp: GetObjectOutput) -> Self {
         let mut buf = Vec::new();
         let meta = resp.metadata.take().unwrap_or_default();
         let mut headers = HashMap::new();
@@ -119,8 +119,7 @@ impl From<GetObjectOutput> for GetAsBufferResp {
         );
 
         if let Some(_body) = resp.body.take() {
-            //TODO Async
-            _body.into_blocking_read().read_to_end(&mut buf).ok();
+            _body.into_async_read().read_buf(&mut buf).await.ok();
         }
         let content = Box::pin(buf.into());
         Self {

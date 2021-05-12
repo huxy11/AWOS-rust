@@ -1,30 +1,34 @@
-use quick_xml::{events::Event, Reader};
-
-use oss_sdk::{OSSClient, SignAndDispatch};
-
 use crate::{
     errors::{Error, ParseError},
     types, AwosApi, GetAsBufferResp, ListDetailsResp, ListOptions, ObjectDetails, PutOrCopyOptions,
     Result, SignedUrlOptions,
 };
 
-impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
-    fn list_object<'a, O>(&self, opts: O) -> Result<Vec<String>>
+use async_trait::async_trait;
+
+use oss_sdk::{OSSClient, SignAndDispatch};
+
+use quick_xml::{events::Event, Reader};
+
+#[async_trait]
+impl<C: SignAndDispatch + Send + Sync> AwosApi for OSSClient<C> {
+    async fn list_object<'a, O>(&self, opts: O) -> Result<Vec<String>>
     where
-        O: Into<Option<ListOptions<'a>>>,
+        O: Into<Option<ListOptions<'a>>> + Send,
     {
-        self.list_details(opts).map(|resp| resp.to_obj_names())
+        self.list_details(opts)
+            .await
+            .map(|resp| resp.to_obj_names())
     }
-    fn list_details<'a, O>(&self, opts: O) -> Result<ListDetailsResp>
+    async fn list_details<'a, O>(&self, opts: O) -> Result<ListDetailsResp>
     where
-        O: Into<Option<ListOptions<'a>>>,
-        // R: FromIterator<String>,
+        O: Into<Option<ListOptions<'a>>> + Send,
     {
         let mut rqst = self.get_request(None);
         if let Some(_opts) = opts.into() {
             rqst.set_params(_opts.to_params().into_iter().collect());
         }
-        let resp = self.sign_and_dispatch(rqst)?;
+        let resp = self.sign_and_dispatch(rqst).await?;
 
         if resp.status.is_success() {
             let resp_content = std::str::from_utf8(&resp.body)?;
@@ -78,23 +82,27 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
             Err(resp.status.as_u16().into())
         }
     }
-    fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<types::GetResp>
+    async fn get<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<types::GetResp>
     where
-        S: AsRef<str>,
-        M: Into<Option<F>>,
-        F: IntoIterator<Item = &'a str>,
+        S: AsRef<str> + Send,
+        M: Into<Option<F>> + Send,
+        F: IntoIterator<Item = &'a str> + Send,
     {
-        Ok(self.get_as_buffer(key, meta_keys_filter)?.into())
+        Ok(self.get_as_buffer(key, meta_keys_filter).await?.into())
     }
 
-    fn get_as_buffer<'a, S, M, F>(&self, key: S, meta_keys_filter: M) -> Result<GetAsBufferResp>
+    async fn get_as_buffer<'a, S, M, F>(
+        &self,
+        key: S,
+        meta_keys_filter: M,
+    ) -> Result<GetAsBufferResp>
     where
-        S: AsRef<str>,
-        M: Into<Option<F>>,
-        F: IntoIterator<Item = &'a str>,
+        S: AsRef<str> + Send,
+        M: Into<Option<F>> + Send,
+        F: IntoIterator<Item = &'a str> + Send,
     {
         let rqst = self.get_request(key.as_ref());
-        let resp = self.sign_and_dispatch(rqst)?;
+        let resp = self.sign_and_dispatch(rqst).await?;
         if resp.status.is_success() {
             let mut get_resp: GetAsBufferResp = resp.into();
             if let Some(_meta_keys_filter) = meta_keys_filter.into() {
@@ -106,27 +114,27 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
             Err(resp.status.as_u16().into())
         }
     }
-    fn head<S>(&self, key: S) -> Result<std::collections::HashMap<String, String>>
+    async fn head<S>(&self, key: S) -> Result<std::collections::HashMap<String, String>>
     where
-        S: AsRef<str>,
+        S: AsRef<str> + Send,
     {
-        let mut resp = self.get_as_buffer::<_, _, Vec<_>>(key, None)?;
+        let mut resp = self.get_as_buffer::<_, _, Vec<_>>(key, None).await?;
         resp.headers.extend(resp.meta.into_iter());
         Ok(resp.headers)
     }
 
-    fn put<'a, S, D, O>(&self, key: S, data: D, opts: O) -> Result<()>
+    async fn put<'a, S, D, O>(&self, key: S, data: D, opts: O) -> Result<()>
     where
-        S: AsRef<str>,
-        D: Into<Box<[u8]>>,
-        O: Into<Option<PutOrCopyOptions<'a>>>,
+        S: AsRef<str> + Send,
+        D: Into<Box<[u8]>> + Send,
+        O: Into<Option<PutOrCopyOptions<'a>>> + Send,
     {
         let mut rqst = self.put_request(key.as_ref(), data.into());
         if let Some(_opts) = opts.into() {
             rqst.add_headers(_opts.as_headers());
             rqst.add_meta(_opts.meta.unwrap_or_default());
         }
-        let resp = self.sign_and_dispatch(rqst)?;
+        let resp = self.sign_and_dispatch(rqst).await?;
         if resp.status.is_success() {
             Ok(())
         } else {
@@ -134,11 +142,11 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
         }
     }
 
-    fn copy<'a, S1, S2, O>(&self, src: S1, key: S2, opts: O) -> Result<()>
+    async fn copy<'a, S1, S2, O>(&self, src: S1, key: S2, opts: O) -> Result<()>
     where
-        S1: Into<String>,
-        S2: AsRef<str>,
-        O: Into<Option<PutOrCopyOptions<'a>>>,
+        S1: Into<String> + Send,
+        S2: AsRef<str> + Send,
+        O: Into<Option<PutOrCopyOptions<'a>>> + Send,
     {
         let mut rqst = self.put_request(key.as_ref(), None);
         if let Some(_opts) = opts.into() {
@@ -148,7 +156,7 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
             rqst.add_headers(headers);
             rqst.add_meta(_opts.meta.unwrap_or_default());
         }
-        let resp = self.sign_and_dispatch(rqst)?;
+        let resp = self.sign_and_dispatch(rqst).await?;
         if resp.status.is_success() {
             Ok(())
         } else {
@@ -156,12 +164,12 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
         }
     }
 
-    fn del<S>(&self, key: S) -> Result<()>
+    async fn del<S>(&self, key: S) -> Result<()>
     where
-        S: AsRef<str>,
+        S: AsRef<str> + Send,
     {
         let rqst = self.del_request(key.as_ref());
-        let resp = self.sign_and_dispatch(rqst)?;
+        let resp = self.sign_and_dispatch(rqst).await?;
         if resp.status.is_success() {
             Ok(())
         } else {
@@ -169,13 +177,12 @@ impl<C: SignAndDispatch> AwosApi for OSSClient<C> {
         }
     }
 
-    fn del_multi<K, S>(&self, keys: K) -> Result<()>
+    async fn del_multi<S>(&self, keys: &[S]) -> Result<()>
     where
-        S: AsRef<str>,
-        K: Default + IntoIterator<Item = S>,
+        S: AsRef<str> + Sync,
     {
-        for key in keys.into_iter() {
-            self.del(key)?;
+        for key in keys {
+            self.del(key.as_ref()).await?;
         }
         Ok(())
     }

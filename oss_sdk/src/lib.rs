@@ -13,7 +13,7 @@ pub use oss::OSS_PREFIX;
 pub use crate::http_client::{DispatchError as OSSError, HttpResponse, SignAndDispatch};
 pub use crate::oss::OSSClient;
 
-pub type OssClient = OSSClient<reqwest::blocking::Client>;
+pub type OssClient = OSSClient<reqwest::Client>;
 
 impl OssClient {
     pub fn new_oss_cli<'a, R, S, B, S1, S2>(
@@ -31,7 +31,7 @@ impl OssClient {
         S2: Into<String>,
     {
         Self::new(
-            reqwest::blocking::Client::new(),
+            reqwest::Client::new(),
             region,
             schema,
             bucket,
